@@ -531,6 +531,52 @@ function Library:MakeWindow(wc)
         BackgroundTransparency = 0.45,
     }), {
         Create("UIStroke", {Color = Color3.fromRGB(48, 60, 130), Thickness = 1, Transparency = 0.3}),
+
+        -- ── Left-side shine streak ────────────────────────────
+        -- Outer soft glow halo (wide, very transparent)
+        Create("Frame", {
+            Size             = UDim2.new(0, 6, 1, 0),
+            Position         = UDim2.new(0, 0, 0, 0),
+            BackgroundColor3 = Color3.fromRGB(110, 140, 255),
+            BackgroundTransparency = 0.78,
+            BorderSizePixel  = 0,
+            ZIndex           = 0,
+        }, {
+            Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
+            Create("UIGradient", {
+                Color    = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 100, 220)),
+                }),
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0,   0.0),
+                    NumberSequenceKeypoint.new(0.5, 0.3),
+                    NumberSequenceKeypoint.new(1,   1.0),
+                }),
+                Rotation = 90,
+            }),
+        }),
+        -- Inner sharp highlight line
+        Create("Frame", {
+            Size             = UDim2.new(0, 1.5, 0.65, 0),
+            Position         = UDim2.new(0, 1, 0.18, 0),
+            BackgroundColor3 = Color3.fromRGB(200, 215, 255),
+            BackgroundTransparency = 0.30,
+            BorderSizePixel  = 0,
+            ZIndex           = 2,
+        }, {
+            Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
+            Create("UIGradient", {
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0,   0.1),
+                    NumberSequenceKeypoint.new(0.5, 0.55),
+                    NumberSequenceKeypoint.new(1,   1.0),
+                }),
+                Rotation = 90,
+            }),
+        }),
+        -- ─────────────────────────────────────────────────────
+
         Create("UIListLayout", {
             FillDirection       = Enum.FillDirection.Horizontal,
             HorizontalAlignment = Enum.HorizontalAlignment.Center,
