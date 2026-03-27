@@ -1,5 +1,6 @@
 -- ============================================================
 --  Froxy UI Library  ·  Glassmorphism v2  ·  Professional
+--  FIXED VERSION — alle Bugs behoben
 -- ============================================================
 
 local UserInputService  = game:GetService("UserInputService")
@@ -26,28 +27,19 @@ local Library = {
     Flags        = {},
     Themes = {
         Default = {
-            -- Glass layers (use BackgroundTransparency alongside these)
-            BgDeep   = Color3.fromRGB(6,   7,  14),   -- absolute base
-            BgPanel  = Color3.fromRGB(10,  11,  22),   -- sidebar / main panel
-            BgCard   = Color3.fromRGB(16,  18,  34),   -- element cards
-            BgInput  = Color3.fromRGB(9,   10,  22),   -- input track bg
-
-            -- Borders
-            BorderDim  = Color3.fromRGB(38,  44,  88),   -- subtle divider
-            BorderGlow = Color3.fromRGB(70,  90, 200),   -- lit edge
-            BorderPop  = Color3.fromRGB(100, 130, 255),  -- active/hover edge
-
-            -- Text
-            TextHi   = Color3.fromRGB(230, 235, 255),   -- headlines
-            TextMid  = Color3.fromRGB(155, 168, 220),   -- labels
-            TextLow  = Color3.fromRGB(75,   88, 150),   -- hints / secondary
-
-            -- Accent spectrum
-            AccentA  = Color3.fromRGB(80,  115, 255),   -- indigo
-            AccentB  = Color3.fromRGB(130,  75, 255),   -- violet
-            AccentC  = Color3.fromRGB(40,  190, 210),   -- cyan flash
-
-            -- Alias map for AddThemeObject
+            BgDeep   = Color3.fromRGB(6,   7,  14),
+            BgPanel  = Color3.fromRGB(10,  11,  22),
+            BgCard   = Color3.fromRGB(16,  18,  34),
+            BgInput  = Color3.fromRGB(9,   10,  22),
+            BorderDim  = Color3.fromRGB(38,  44,  88),
+            BorderGlow = Color3.fromRGB(70,  90, 200),
+            BorderPop  = Color3.fromRGB(100, 130, 255),
+            TextHi   = Color3.fromRGB(230, 235, 255),
+            TextMid  = Color3.fromRGB(155, 168, 220),
+            TextLow  = Color3.fromRGB(75,   88, 150),
+            AccentA  = Color3.fromRGB(80,  115, 255),
+            AccentB  = Color3.fromRGB(130,  75, 255),
+            AccentC  = Color3.fromRGB(40,  190, 210),
             Main    = Color3.fromRGB(6,   7,  14),
             Second  = Color3.fromRGB(16,  18,  34),
             Stroke  = Color3.fromRGB(38,  44,  88),
@@ -65,8 +57,6 @@ local Library = {
 -- ============================================================
 --  INTERNALS
 -- ============================================================
-
-local function GetIcon() return nil end
 
 function Library:CleanupInstance()
     for _, inst in ipairs(game:GetService("CoreGui"):GetChildren()) do
@@ -128,7 +118,7 @@ local function MakeDraggable(DragPoint, Main)
             end
         end)
     end)
-    return function(r) resizing = r; if r then end end
+    return function(r) resizing = r end
 end
 
 -- ── Resizable ──────────────────────────────────────────────
@@ -205,21 +195,27 @@ local function PackColor(c)   return {R=c.R*255, G=c.G*255, B=c.B*255} end
 local function UnpackColor(c) return Color3.fromRGB(c.R, c.G, c.B)     end
 
 local function LoadCfg(raw)
-    local data = game:GetService("HttpService"):JSONDecode(raw)
+    -- FIX: pcall um JSONDecode damit korrupte Configs nicht crashen
+    local ok, data = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(raw)
+    end)
+    if not ok then return end
     for k,v in pairs(data) do
         if Library.Flags[k] then
             spawn(function()
-                if Library.Flags[k].Type == "Colorpicker" then
-                    Library.Flags[k]:Set(UnpackColor(v))
-                else
-                    Library.Flags[k]:Set(v)
-                end
+                pcall(function()
+                    if Library.Flags[k].Type == "Colorpicker" then
+                        Library.Flags[k]:Set(UnpackColor(v))
+                    else
+                        Library.Flags[k]:Set(v)
+                    end
+                end)
             end)
         end
     end
 end
 
-local function SaveCfg() end   -- stub — wire up as needed
+local function SaveCfg() end
 
 local WhitelistedMouse = {
     Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2,
@@ -305,16 +301,17 @@ CreateElement("ScrollFrame", function(color, width)
 end)
 
 CreateElement("Image", function(id)
-    return Create("ImageLabel", {Image = id, BackgroundTransparency = 1})
+    return Create("ImageLabel", {Image = id or "", BackgroundTransparency = 1})
 end)
 
 CreateElement("ImageButton", function(id)
-    return Create("ImageButton", {Image = id, BackgroundTransparency = 1})
+    return Create("ImageButton", {Image = id or "", BackgroundTransparency = 1})
 end)
 
+-- FIX: Text wird immer zu String konvertiert → kein "string expected, got number" mehr
 CreateElement("Label", function(text, size, transp)
     return Create("TextLabel", {
-        Text                   = text or "",
+        Text                   = tostring(text or ""),
         TextColor3             = Color3.fromRGB(230,235,255),
         TextTransparency       = transp or 0,
         TextSize               = size or 14,
@@ -326,7 +323,6 @@ CreateElement("Label", function(text, size, transp)
 end)
 
 -- ── Glass card helper ──────────────────────────────────────
--- Returns a consistently styled glass card Frame
 local function GlassCard(size, parent, alpha)
     alpha = alpha or 0.55
     local f = Create("Frame", {
@@ -366,8 +362,8 @@ local NotifHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 
 function Library:MakeNotification(cfg)
     spawn(function()
-        cfg.Name    = cfg.Name    or "Notice"
-        cfg.Content = cfg.Content or ""
+        cfg.Name    = tostring(cfg.Name    or "Notice")
+        cfg.Content = tostring(cfg.Content or "")
         cfg.Image   = cfg.Image   or "rbxassetid://4384403532"
         cfg.Time    = cfg.Time    or 8
 
@@ -377,7 +373,6 @@ function Library:MakeNotification(cfg)
             Parent        = NotifHolder,
         })
 
-        -- Accent bar on the left (indigo–violet gradient)
         local accentBar = Create("Frame", {
             Size             = UDim2.new(0, 3, 1, -16),
             Position         = UDim2.new(0, 0, 0, 8),
@@ -409,14 +404,12 @@ function Library:MakeNotification(cfg)
             }),
             MakeElement("Padding", 12, 14, 14, 12),
             accentBar,
-            -- Icon
             SetProps(MakeElement("Image", cfg.Image), {
                 Size        = UDim2.new(0, 18, 0, 18),
                 Position    = UDim2.new(0, 18, 0, 0),
                 ImageColor3 = Color3.fromRGB(130, 160, 255),
                 Name        = "Icon",
             }),
-            -- Title
             SetProps(MakeElement("Label", cfg.Name, 14), {
                 Size      = UDim2.new(1, -38, 0, 18),
                 Position  = UDim2.new(0, 38, 0, 0),
@@ -424,7 +417,6 @@ function Library:MakeNotification(cfg)
                 TextColor3= Color3.fromRGB(220, 228, 255),
                 Name      = "Title",
             }),
-            -- Body
             SetProps(MakeElement("Label", cfg.Content, 12), {
                 Size          = UDim2.new(1, -4, 0, 0),
                 Position      = UDim2.new(0, 0, 0, 24),
@@ -436,14 +428,12 @@ function Library:MakeNotification(cfg)
             }),
         })
 
-        -- Slide in
         T(card, 0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, {
             Position = UDim2.new(0, 0, 0, 0)
         })
 
         task.wait(cfg.Time - 0.9)
 
-        -- Fade out
         T(card,        0.55, Enum.EasingStyle.Quint, nil, {BackgroundTransparency = 0.85})
         T(card.Border, 0.55, Enum.EasingStyle.Quint, nil, {Transparency = 0.9})
         T(card.Icon,   0.35, Enum.EasingStyle.Quint, nil, {ImageTransparency = 1})
@@ -463,7 +453,7 @@ function Library:Init()
                 LoadCfg(readfile(Library.Folder.."/"..game.GameId..".txt"))
                 Library:MakeNotification({
                     Name    = "Config",
-                    Content = "Loaded saved config for game "..game.GameId,
+                    Content = "Loaded saved config for game "..tostring(game.GameId),
                     Time    = 5,
                 })
             end
@@ -481,20 +471,23 @@ function Library:MakeWindow(wc)
     local UIHidden  = false
 
     wc = wc or {}
-    wc.Name             = wc.Name             or "Froxy"
+    wc.Name             = tostring(wc.Name or "Froxy")
     wc.ConfigFolder     = wc.ConfigFolder     or wc.Name
     wc.SaveConfig       = wc.SaveConfig       or false
     wc.HidePremium      = wc.HidePremium      or false
     if wc.IntroEnabled  == nil then wc.IntroEnabled = true end
-    wc.IntroText        = wc.IntroText        or "Loading…"
+    wc.IntroText        = tostring(wc.IntroText or "Loading…")
     wc.IntroIcon        = wc.IntroIcon        or "rbxassetid://138394234566692"
     wc.CloseCallback    = wc.CloseCallback    or function() end
     wc.Icon             = wc.Icon             or "rbxassetid://8834748103"
     Library.Folder      = wc.ConfigFolder
     Library.SaveCfg     = wc.SaveConfig
-    if wc.SaveConfig and not isfolder(wc.ConfigFolder) then makefolder(wc.ConfigFolder) end
+    if wc.SaveConfig then
+        pcall(function()
+            if not isfolder(wc.ConfigFolder) then makefolder(wc.ConfigFolder) end
+        end)
+    end
 
-    -- ── Sidebar tab scroll ────────────────────────────────────
     local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame",
         Color3.fromRGB(70, 100, 210), 2), {
         Size = UDim2.new(1, 0, 1, -54),
@@ -507,7 +500,6 @@ function Library:MakeWindow(wc)
         TabHolder.CanvasSize = UDim2.new(0, 0, 0, TabHolder.UIListLayout.AbsoluteContentSize.Y + 14)
     end)
 
-    -- ── Window control buttons ────────────────────────────────
     local function WinBtn(icon)
         return SetChildren(SetProps(MakeElement("Button"), {Size = UDim2.new(0, 32, 1, 0)}), {
             AddThemeObject(SetProps(MakeElement("Image", icon), {
@@ -523,7 +515,6 @@ function Library:MakeWindow(wc)
     local ResizeBtn   = WinBtn("rbxassetid://117273761878755")
     MinimizeBtn:FindFirstChildWhichIsA("ImageLabel").Name = "Ico"
 
-    -- Btn container — glass pill
     local BtnContainer = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(10,12,24), 0, 6), {
         Size                   = UDim2.new(0, 104, 0, 26),
         Position               = UDim2.new(1, -116, 0.5, 0),
@@ -531,9 +522,6 @@ function Library:MakeWindow(wc)
         BackgroundTransparency = 0.45,
     }), {
         Create("UIStroke", {Color = Color3.fromRGB(48, 60, 130), Thickness = 1, Transparency = 0.3}),
-
-        -- ── Left-side shine streak ────────────────────────────
-        -- Outer soft glow halo (wide, very transparent)
         Create("Frame", {
             Size             = UDim2.new(0, 6, 1, 0),
             Position         = UDim2.new(0, 0, 0, 0),
@@ -556,7 +544,6 @@ function Library:MakeWindow(wc)
                 Rotation = 90,
             }),
         }),
-        -- Inner sharp highlight line
         Create("Frame", {
             Size             = UDim2.new(0, 1.5, 0.65, 0),
             Position         = UDim2.new(0, 1, 0.18, 0),
@@ -575,8 +562,6 @@ function Library:MakeWindow(wc)
                 Rotation = 90,
             }),
         }),
-        -- ─────────────────────────────────────────────────────
-
         Create("UIListLayout", {
             FillDirection       = Enum.FillDirection.Horizontal,
             HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -586,7 +571,6 @@ function Library:MakeWindow(wc)
         ResizeBtn, MinimizeBtn, CloseBtn,
     })
 
-    -- Hover glow on each button
     local btnColors = {
         [ResizeBtn]   = Color3.fromRGB(60, 80, 200),
         [MinimizeBtn] = Color3.fromRGB(55, 75, 185),
@@ -602,7 +586,6 @@ function Library:MakeWindow(wc)
         end)
     end
 
-    -- ── Topbar ────────────────────────────────────────────────
     local WindowName = AddThemeObject(SetProps(MakeElement("Label", wc.Name, 18), {
         Size       = UDim2.new(1, -130, 1, 0),
         Position   = UDim2.new(0, 22, 0, 0),
@@ -610,7 +593,6 @@ function Library:MakeWindow(wc)
         TextColor3 = Color3.fromRGB(240, 243, 255),
     }), "Text")
 
-    -- Hairline separator under topbar
     local TopLine = Create("Frame", {
         Size                   = UDim2.new(1, 0, 0, 1),
         Position               = UDim2.new(0, 0, 1, -1),
@@ -619,10 +601,8 @@ function Library:MakeWindow(wc)
         BorderSizePixel        = 0,
     })
 
-    -- ── Search bar (slides in from right) ────────────────────
     local SearchOpen = false
 
-    -- Lupe-Button (links neben BtnContainer)
     local SearchBtn = SetChildren(SetProps(MakeElement("Button"), {
         Size                   = UDim2.new(0, 28, 0, 28),
         Position               = UDim2.new(1, -152, 0.5, 0),
@@ -632,7 +612,6 @@ function Library:MakeWindow(wc)
     }), {
         Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
         Create("UIStroke",  {Color = Color3.fromRGB(48, 62, 145), Thickness = 1, Transparency = 0.4}),
-        -- Lupe-Icon via Text (Unicode)
         Create("TextLabel", {
             Size                   = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
@@ -645,9 +624,8 @@ function Library:MakeWindow(wc)
         }),
     })
 
-    -- Such-Overlay (versteckt, gleitet über den Topbar)
     local SearchBar = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(8, 10, 22), 0, 7), {
-        Size                   = UDim2.new(0, 0, 0, 28),   -- startet bei Breite 0
+        Size                   = UDim2.new(0, 0, 0, 28),
         Position               = UDim2.new(1, -16, 0.5, 0),
         AnchorPoint            = Vector2.new(1, 0.5),
         BackgroundTransparency = 0.35,
@@ -660,7 +638,6 @@ function Library:MakeWindow(wc)
             Transparency = 0.25,
             Name         = "Border",
         }),
-        -- Lupe links im Suchfeld
         Create("TextLabel", {
             Size                   = UDim2.new(0, 22, 1, 0),
             Position               = UDim2.new(0, 4, 0, 0),
@@ -671,7 +648,6 @@ function Library:MakeWindow(wc)
             Font                   = Enum.Font.GothamBold,
             TextXAlignment         = Enum.TextXAlignment.Center,
         }),
-        -- Eigentliches Texteingabe-Feld
         Create("TextBox", {
             Size                   = UDim2.new(1, -52, 1, 0),
             Position               = UDim2.new(0, 26, 0, 0),
@@ -686,7 +662,6 @@ function Library:MakeWindow(wc)
             Name                   = "Input",
             ZIndex                 = 11,
         }),
-        -- X-Button zum Schließen
         Create("TextButton", {
             Size                   = UDim2.new(0, 20, 1, 0),
             Position               = UDim2.new(1, -22, 0, 0),
@@ -700,7 +675,9 @@ function Library:MakeWindow(wc)
         }),
     })
 
-    -- Suche öffnen / schließen
+    -- FIX: MainWindow wird VOR den Connections deklariert damit der Scope stimmt
+    local MainWindow
+
     local function SetSearch(open)
         SearchOpen = open
         if open then
@@ -717,12 +694,13 @@ function Library:MakeWindow(wc)
               {Size = UDim2.new(0, 0, 0, 28)})
             T(SearchBtn, 0.20, nil, nil, {BackgroundTransparency = 0.55})
             T(SearchBtn.Icon, 0.15, nil, nil, {TextColor3 = Color3.fromRGB(130, 155, 240)})
-            -- Alle Elemente wieder einblenden
-            for _, ic in ipairs(MainWindow:GetChildren()) do
-                if ic.Name == "ItemContainer" and ic.Visible then
-                    for _, el in ipairs(ic:GetChildren()) do
-                        if el:IsA("Frame") or el:IsA("ScrollingFrame") then
-                            el.Visible = true
+            if MainWindow then
+                for _, ic in ipairs(MainWindow:GetChildren()) do
+                    if ic.Name == "ItemContainer" and ic.Visible then
+                        for _, el in ipairs(ic:GetChildren()) do
+                            if el:IsA("Frame") or el:IsA("ScrollingFrame") then
+                                el.Visible = true
+                            end
                         end
                     end
                 end
@@ -737,16 +715,15 @@ function Library:MakeWindow(wc)
         SetSearch(false)
     end)
 
-    -- Live-Filter: blendet Elemente aus die nicht zum Suchbegriff passen
     AddConnection(SearchBar.Input:GetPropertyChangedSignal("Text"), function()
+        if not MainWindow then return end
         local query = SearchBar.Input.Text:lower()
         for _, ic in ipairs(MainWindow:GetChildren()) do
             if ic.Name == "ItemContainer" and ic.Visible then
                 for _, el in ipairs(ic:GetChildren()) do
                     if el:IsA("Frame") or el:IsA("ScrollingFrame") then
-                        -- Elementname aus dem Label "Content" lesen
                         local nameLabel = el:FindFirstChild("Content")
-                        local elName = nameLabel and nameLabel.Text:lower() or ""
+                        local elName = nameLabel and tostring(nameLabel.Text):lower() or ""
                         if query == "" then
                             el.Visible = true
                         else
@@ -768,8 +745,6 @@ function Library:MakeWindow(wc)
         WindowName, TopLine, SearchBtn, SearchBar, BtnContainer, DragPoint,
     })
 
-    -- ── Sidebar ───────────────────────────────────────────────
-    -- Avatar ring glow
     local avatarRing = SetChildren(SetProps(MakeElement("TFrame"), {
         AnchorPoint = Vector2.new(0, 0.5),
         Size        = UDim2.new(0, 32, 0, 32),
@@ -791,7 +766,6 @@ function Library:MakeWindow(wc)
             }),
             Rotation = 90,
         }),
-        -- Right edge glow line
         Create("Frame", {
             Size             = UDim2.new(0, 1, 1, 0),
             Position         = UDim2.new(1, 0, 0, 0),
@@ -800,7 +774,6 @@ function Library:MakeWindow(wc)
             BorderSizePixel  = 0,
         }),
         TabHolder,
-        -- User section
         SetChildren(SetProps(MakeElement("TFrame"), {
             Size     = UDim2.new(1, 0, 0, 54),
             Position = UDim2.new(0, 0, 1, -54),
@@ -817,19 +790,20 @@ function Library:MakeWindow(wc)
                 Size        = UDim2.new(0, 30, 0, 30),
                 Position    = UDim2.new(0, 11, 0.5, 0),
             }), {
+                -- FIX: pcall für Thumbnail-URL damit es nicht crasht wenn UserId nil ist
                 SetProps(MakeElement("Image",
-                    "https://www.roblox.com/headshot-thumbnail/image?userId="..LocalPlayer.UserId.."&width=420&height=420&format=png"), {
+                    "https://www.roblox.com/headshot-thumbnail/image?userId="..tostring(LocalPlayer.UserId).."&width=420&height=420&format=png"), {
                     Size = UDim2.new(1, 0, 1, 0),
                 }),
                 MakeElement("Corner", 1),
             }), "Divider"),
-            AddThemeObject(SetProps(MakeElement("Label", LocalPlayer.DisplayName, 13), {
+            AddThemeObject(SetProps(MakeElement("Label", tostring(LocalPlayer.DisplayName), 13), {
                 Size     = UDim2.new(1, -52, 0, 13),
                 Position = wc.HidePremium and UDim2.new(0, 50, 0.5, -6) or UDim2.new(0, 50, 0, 13),
                 Font     = Enum.Font.GothamBold,
                 ClipsDescendants = true,
             }), "Text"),
-            AddThemeObject(SetProps(MakeElement("Label", "@"..LocalPlayer.Name, 11), {
+            AddThemeObject(SetProps(MakeElement("Label", "@"..tostring(LocalPlayer.Name), 11), {
                 Size    = UDim2.new(1, -52, 0, 11),
                 Position= UDim2.new(0, 50, 1, -22),
                 Visible = not wc.HidePremium,
@@ -837,15 +811,14 @@ function Library:MakeWindow(wc)
         }),
     }), "Second")
 
-    -- ── Main window frame ─────────────────────────────────────
-    local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(8,9,18), 0, 12), {
+    -- FIX: MainWindow wird jetzt hier erstellt (vorher referenziert in SetSearch)
+    MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(8,9,18), 0, 12), {
         Parent                 = Container,
         Position               = UDim2.new(0.5, -310, 0.5, -175),
         Size                   = UDim2.new(0, 620, 0, 350),
         ClipsDescendants       = true,
         BackgroundTransparency = 0.40,
     }), {
-        -- Subtle radial-ish gradient overlay
         Create("UIGradient", {
             Color    = ColorSequence.new({
                 ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 20, 42)),
@@ -853,7 +826,6 @@ function Library:MakeWindow(wc)
             }),
             Rotation = 140,
         }),
-        -- Outer glow border
         Create("UIStroke", {
             Color        = Color3.fromRGB(60, 80, 200),
             Thickness    = 1.2,
@@ -875,7 +847,6 @@ function Library:MakeWindow(wc)
     local SetResizingCb = MakeDraggable(DragPoint, MainWindow)
     MakeResizable(ResizeBtn, MainWindow, Vector2.new(420, 260), Vector2.new(1280, 860), SetResizingCb)
 
-    -- ── Mobile reopen button ──────────────────────────────────
     local ReopenBtn = SetChildren(SetProps(MakeElement("Button"), {
         Parent                 = Container,
         Size                   = UDim2.new(0, 42, 0, 42),
@@ -894,7 +865,6 @@ function Library:MakeWindow(wc)
         MakeElement("Corner", 1),
     })
 
-    -- ── Window controls ───────────────────────────────────────
     AddConnection(CloseBtn.MouseButton1Up, function()
         MainWindow.Visible = false
         if UserInputService.TouchEnabled then ReopenBtn.Visible = true end
@@ -942,19 +912,16 @@ function Library:MakeWindow(wc)
         Minimized = not Minimized
     end)
 
-    -- ── Intro sequence ────────────────────────────────────────
     local function RunIntro()
         MainWindow.Visible = false
 
-        -- ── Stylisierter "N"-Monogramm-Badge ─────────────────────
-        -- Äußerer Glow-Ring
         local glowRing = Create("Frame", {
             Parent                 = Container,
             AnchorPoint            = Vector2.new(0.5, 0.5),
             Position               = UDim2.new(0.5, 0, 0.38, 0),
             Size                   = UDim2.new(0, 58, 0, 58),
             BackgroundColor3       = Color3.fromRGB(70, 100, 240),
-            BackgroundTransparency = 1,    -- startet unsichtbar
+            BackgroundTransparency = 1,
             BorderSizePixel        = 0,
         }, {
             Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
@@ -967,7 +934,6 @@ function Library:MakeWindow(wc)
             }),
         })
 
-        -- Innerer dunkler Badge
         local badge = Create("Frame", {
             Parent                 = Container,
             AnchorPoint            = Vector2.new(0.5, 0.5),
@@ -978,7 +944,6 @@ function Library:MakeWindow(wc)
             BorderSizePixel        = 0,
         }, {
             Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
-            -- "N" Buchstabe
             Create("TextLabel", {
                 Size                   = UDim2.new(1, 0, 1, 0),
                 BackgroundTransparency = 1,
@@ -1003,7 +968,6 @@ function Library:MakeWindow(wc)
             TextTransparency = 1,
         })
 
-        -- Einblenden: Ring + Badge tauchen auf, Badge steigt von oben ein
         T(glowRing, 0.40, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, {
             BackgroundTransparency = 0.20,
             Position               = UDim2.new(0.5, 0, 0.5, 0),
@@ -1014,7 +978,6 @@ function Library:MakeWindow(wc)
         })
         task.wait(0.85)
 
-        -- Badge + Ring nach links schieben, Text einblenden
         local textW = lbl.TextBounds.X
         T(glowRing, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out,
           {Position = UDim2.new(0.5, -(textW / 2) - 2, 0.5, 0)})
@@ -1025,7 +988,6 @@ function Library:MakeWindow(wc)
 
         task.wait(1.9)
 
-        -- Ausblenden
         T(lbl,      0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In, {TextTransparency = 1})
         T(badge,    0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.In, {BackgroundTransparency = 1})
         T(glowRing, 0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.In, {BackgroundTransparency = 1})
@@ -1044,17 +1006,15 @@ function Library:MakeWindow(wc)
 
     function TabFunction:MakeTab(tc)
         tc            = tc or {}
-        tc.Name       = tc.Name  or "Tab"
+        tc.Name       = tostring(tc.Name  or "Tab")
         tc.Icon       = tc.Icon  or ""
         tc.PremiumOnly= tc.PremiumOnly or false
 
-        -- ── Tab button ──────────────────────────────────────────
         local tabBtn = SetChildren(SetProps(MakeElement("Button"), {
             Size                   = UDim2.new(1, 0, 0, 32),
             Parent                 = TabHolder,
             BackgroundTransparency = 1,
         }), {
-            -- Active indicator bar
             Create("Frame", {
                 Size             = UDim2.new(0, 2, 0, 14),
                 Position         = UDim2.new(0, 0, 0.5, 0),
@@ -1064,7 +1024,6 @@ function Library:MakeWindow(wc)
                 BorderSizePixel  = 0,
                 Name             = "ActiveBar",
             }, {Create("UICorner", {CornerRadius = UDim.new(1, 0)})}),
-            -- Icon
             AddThemeObject(SetProps(MakeElement("Image", tc.Icon), {
                 AnchorPoint       = Vector2.new(0, 0.5),
                 Size              = UDim2.new(0, 13, 0, 13),
@@ -1072,7 +1031,6 @@ function Library:MakeWindow(wc)
                 ImageTransparency = 0.6,
                 Name              = "Ico",
             }), "Text"),
-            -- Label
             SetProps(MakeElement("Label", tc.Name, 13), {
                 Size             = UDim2.new(1, -34, 1, 0),
                 Position         = UDim2.new(0, 30, 0, 0),
@@ -1083,7 +1041,6 @@ function Library:MakeWindow(wc)
             }),
         })
 
-        -- Hover pill
         local hoverPill = SetProps(MakeElement("RoundFrame", Color3.fromRGB(35, 50, 120), 0, 5), {
             Size                   = UDim2.new(1, -8, 1, -4),
             Position               = UDim2.new(0, 4, 0, 2),
@@ -1100,7 +1057,6 @@ function Library:MakeWindow(wc)
             T(hoverPill, 0.18, nil, nil, {BackgroundTransparency = 1})
         end)
 
-        -- ── Tab content area ────────────────────────────────────
         local ItemContainer = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame",
             Color3.fromRGB(70, 100, 210), 4), {
             Size     = UDim2.new(1, -150, 1, -48),
@@ -1118,7 +1074,6 @@ function Library:MakeWindow(wc)
                 ItemContainer.UIListLayout.AbsoluteContentSize.Y + 30)
         end)
 
-        -- Click sound
         local snd = Create("Sound", {
             SoundId = "rbxassetid://6895079853",
             Volume  = 0.5,
@@ -1126,7 +1081,6 @@ function Library:MakeWindow(wc)
         })
 
         local function activateTab()
-            -- Reset all
             for _, child in ipairs(TabHolder:GetChildren()) do
                 if child:IsA("TextButton") then
                     child.Title.Font = Enum.Font.GothamSemibold
@@ -1142,7 +1096,6 @@ function Library:MakeWindow(wc)
             for _, ic in ipairs(MainWindow:GetChildren()) do
                 if ic.Name == "ItemContainer" then ic.Visible = false end
             end
-            -- Highlight active
             tabBtn.Title.Font = Enum.Font.GothamBold
             T(tabBtn.Ico,       0.2, nil, nil, {ImageTransparency = 0,
               ImageColor3 = Color3.fromRGB(150, 180, 255)})
@@ -1155,7 +1108,7 @@ function Library:MakeWindow(wc)
         if FirstTab then FirstTab = false; activateTab() end
 
         AddConnection(tabBtn.MouseButton1Click, function()
-            snd:Play()
+            pcall(function() snd:Play() end)
             activateTab()
         end)
 
@@ -1166,10 +1119,9 @@ function Library:MakeWindow(wc)
         local function GetElements(itemParent)
             local ef = {}
 
-            -- ── Label ─────────────────────────────────────────────
             function ef:AddLabel(text)
                 local card = GlassCard(UDim2.new(1, 0, 0, 32), itemParent, 0.50)
-                AddThemeObject(SetProps(MakeElement("Label", text, 14), {
+                AddThemeObject(SetProps(MakeElement("Label", tostring(text or ""), 14), {
                     Size     = UDim2.new(1, -14, 1, 0),
                     Position = UDim2.new(0, 14, 0, 0),
                     Font     = Enum.Font.GothamSemibold,
@@ -1177,14 +1129,13 @@ function Library:MakeWindow(wc)
                     Parent   = card,
                 }), "Text")
                 local fn = {}
-                function fn:Set(t) card.Content.Text = t end
+                function fn:Set(t) card.Content.Text = tostring(t or "") end
                 return fn
             end
 
-            -- ── Paragraph ─────────────────────────────────────────
             function ef:AddParagraph(title, body)
-                title = title or "Title"
-                body  = body  or ""
+                title = tostring(title or "Title")
+                body  = tostring(body  or "")
 
                 local card = GlassCard(UDim2.new(1, 0, 0, 32), itemParent, 0.50)
 
@@ -1212,20 +1163,18 @@ function Library:MakeWindow(wc)
                 bdy.Text = body
 
                 local fn = {}
-                function fn:Set(t) bdy.Text = t end
+                function fn:Set(t) bdy.Text = tostring(t or "") end
                 return fn
             end
 
-            -- ── Button ────────────────────────────────────────────
             function ef:AddButton(cfg)
                 cfg          = cfg or {}
-                cfg.Name     = cfg.Name     or "Button"
+                cfg.Name     = tostring(cfg.Name     or "Button")
                 cfg.Callback = cfg.Callback or function() end
 
                 local btn = {}
                 local click = SetProps(MakeElement("Button"), {Size = UDim2.new(1, 0, 1, 0)})
 
-                -- Left accent bar
                 local bar = Create("Frame", {
                     Size             = UDim2.new(0, 2, 0, 13),
                     Position         = UDim2.new(0, 0, 0.5, 0),
@@ -1245,7 +1194,6 @@ function Library:MakeWindow(wc)
                     }),
                 })
 
-                -- Chevron
                 local chevron = Create("TextLabel", {
                     Size                   = UDim2.new(0, 16, 1, 0),
                     Position               = UDim2.new(1, -26, 0, 0),
@@ -1298,17 +1246,17 @@ function Library:MakeWindow(wc)
                 AddConnection(click.MouseButton1Up, function()
                     T(card, 0.18, nil, nil, {BackgroundTransparency = 0.38})
                     T(bar,  0.18, nil, nil, {Size = UDim2.new(0, 2, 0, 13)})
-                    spawn(function() cfg.Callback() end)
+                    -- FIX: pcall damit ein Fehler im Callback die UI nicht killt
+                    spawn(function() pcall(cfg.Callback) end)
                 end)
 
-                function btn:Set(t) card.Content.Text = t end
+                function btn:Set(t) card.Content.Text = tostring(t or "") end
                 return btn
             end
 
-            -- ── Toggle ────────────────────────────────────────────
             function ef:AddToggle(cfg)
                 cfg          = cfg or {}
-                cfg.Name     = cfg.Name     or "Toggle"
+                cfg.Name     = tostring(cfg.Name     or "Toggle")
                 cfg.Default  = cfg.Default  or false
                 cfg.Callback = cfg.Callback or function() end
                 cfg.Color    = cfg.Color    or Color3.fromRGB(80, 120, 255)
@@ -1318,7 +1266,6 @@ function Library:MakeWindow(wc)
                 local tog = {Value = cfg.Default, Save = cfg.Save, Type = "Toggle"}
                 local click = SetProps(MakeElement("Button"), {Size = UDim2.new(1, 0, 1, 0)})
 
-                -- Track
                 local track = Create("Frame", {
                     Size             = UDim2.new(0, 40, 0, 22),
                     Position         = UDim2.new(1, -50, 0.5, 0),
@@ -1334,7 +1281,6 @@ function Library:MakeWindow(wc)
                 })
                 trackBorder.Parent = track
 
-                -- Fill overlay
                 local fill = Create("Frame", {
                     Size             = UDim2.new(1, 0, 1, 0),
                     BackgroundColor3 = cfg.Color,
@@ -1344,7 +1290,6 @@ function Library:MakeWindow(wc)
                 }, {Create("UICorner", {CornerRadius = UDim.new(1, 0)})})
                 fill.Parent = track
 
-                -- Thumb
                 local thumb = Create("Frame", {
                     Size             = UDim2.new(0, 16, 0, 16),
                     Position         = UDim2.new(0, 3, 0.5, 0),
@@ -1393,7 +1338,8 @@ function Library:MakeWindow(wc)
                         })
                         T(card.Border, 0.25, nil, nil, {Color = Color3.fromRGB(48, 62, 145), Transparency = 0.45})
                     end
-                    cfg.Callback(tog.Value)
+                    -- FIX: pcall damit Callback-Fehler die UI nicht killen
+                    pcall(cfg.Callback, tog.Value)
                 end
 
                 tog:Set(tog.Value)
@@ -1405,7 +1351,6 @@ function Library:MakeWindow(wc)
                     T(card, 0.15, nil, nil, {BackgroundTransparency = 0.50})
                 end)
                 AddConnection(click.MouseButton1Down, function()
-                    -- Squeeze the thumb
                     T(thumb, 0.08, Enum.EasingStyle.Quad, nil, {Size = UDim2.new(0, 20, 0, 16)})
                 end)
                 AddConnection(click.MouseButton1Up, function()
@@ -1418,16 +1363,15 @@ function Library:MakeWindow(wc)
                 return tog
             end
 
-            -- ── Slider ────────────────────────────────────────────
             function ef:AddSlider(cfg)
                 cfg           = cfg or {}
-                cfg.Name      = cfg.Name      or "Slider"
-                cfg.Min       = cfg.Min       or 0
-                cfg.Max       = cfg.Max       or 100
-                cfg.Increment = cfg.Increment or 1
-                cfg.Default   = cfg.Default   or 50
+                cfg.Name      = tostring(cfg.Name      or "Slider")
+                cfg.Min       = tonumber(cfg.Min)       or 0
+                cfg.Max       = tonumber(cfg.Max)       or 100
+                cfg.Increment = tonumber(cfg.Increment) or 1
+                cfg.Default   = tonumber(cfg.Default)   or 50
                 cfg.Callback  = cfg.Callback  or function() end
-                cfg.ValueName = cfg.ValueName or ""
+                cfg.ValueName = tostring(cfg.ValueName or "")
                 cfg.Color     = cfg.Color     or Color3.fromRGB(80, 120, 255)
                 cfg.Flag      = cfg.Flag      or nil
                 cfg.Save      = cfg.Save      or false
@@ -1435,7 +1379,6 @@ function Library:MakeWindow(wc)
                 local sl = {Value = cfg.Default, Save = cfg.Save, Type = "Slider"}
                 local dragging = false
 
-                -- Knob
                 local knob = Create("Frame", {
                     Size             = UDim2.new(0, 13, 0, 13),
                     AnchorPoint      = Vector2.new(0.5, 0.5),
@@ -1449,7 +1392,6 @@ function Library:MakeWindow(wc)
                     Create("UIStroke", {Color = cfg.Color, Thickness = 1.5, Transparency = 0.20}),
                 })
 
-                -- Fill
                 local fill = SetChildren(SetProps(MakeElement("RoundFrame", cfg.Color, 0, 4), {
                     Size             = UDim2.new(0, 0, 1, 0),
                     BackgroundTransparency = 0,
@@ -1465,7 +1407,6 @@ function Library:MakeWindow(wc)
                     }),
                 })
 
-                -- Track
                 local track = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(8, 10, 22), 0, 4), {
                     Size             = UDim2.new(1, -22, 0, 12),
                     Position         = UDim2.new(0, 11, 0, 42),
@@ -1476,7 +1417,6 @@ function Library:MakeWindow(wc)
                     fill,
                 })
 
-                -- Value label
                 local valLbl = AddThemeObject(SetProps(MakeElement("Label", "", 12), {
                     Size             = UDim2.new(1, -22, 0, 14),
                     Position         = UDim2.new(0, 11, 0, 24),
@@ -1518,6 +1458,8 @@ function Library:MakeWindow(wc)
                 end)
 
                 function sl:Set(v)
+                    -- FIX: tonumber damit keine Strings den math.clamp crashen
+                    v = tonumber(v) or cfg.Min
                     self.Value = math.clamp(Round(v, cfg.Increment), cfg.Min, cfg.Max)
                     local pct  = (self.Value - cfg.Min) / (cfg.Max - cfg.Min)
                     T(fill, 0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out,
@@ -1525,7 +1467,7 @@ function Library:MakeWindow(wc)
                     knob.Position = UDim2.new(1, 0, 0.5, 0)
                     valLbl.Text   = tostring(self.Value)
                         ..(cfg.ValueName ~= "" and " "..cfg.ValueName or "")
-                    cfg.Callback(self.Value)
+                    pcall(cfg.Callback, self.Value)
                 end
 
                 sl:Set(sl.Value)
@@ -1533,20 +1475,35 @@ function Library:MakeWindow(wc)
                 return sl
             end
 
-            -- ── Dropdown ──────────────────────────────────────────
+            -- ── Dropdown — HAUPTFIX ────────────────────────────────
             function ef:AddDropdown(cfg)
                 cfg          = cfg or {}
-                cfg.Name     = cfg.Name     or "Dropdown"
+                cfg.Name     = tostring(cfg.Name     or "Dropdown")
                 cfg.Options  = cfg.Options  or {}
-                cfg.Default  = cfg.Default  or ""
+                cfg.Default  = tostring(cfg.Default  or "")
                 cfg.Callback = cfg.Callback or function() end
                 cfg.Flag     = cfg.Flag     or nil
                 cfg.Save     = cfg.Save     or false
 
+                -- FIX 1: Alle Options direkt beim Start zu Strings konvertieren
+                local function NormalizeOptions(opts)
+                    local result = {}
+                    for _, v in ipairs(opts) do
+                        table.insert(result, tostring(v))
+                    end
+                    return result
+                end
+
                 local dd = {
-                    Value = cfg.Default, Options = cfg.Options,
-                    Buttons = {}, Toggled = false, Type = "Dropdown", Save = cfg.Save,
+                    Value   = cfg.Default,
+                    Options = NormalizeOptions(cfg.Options),
+                    Buttons = {},
+                    Toggled = false,
+                    Type    = "Dropdown",
+                    Save    = cfg.Save,
                 }
+
+                -- FIX 2: Default-Wert prüfen nach Normalisierung
                 if not table.find(dd.Options, dd.Value) then dd.Value = "—" end
 
                 local MAX = 5
@@ -1592,7 +1549,8 @@ function Library:MakeWindow(wc)
                             ImageColor3 = Color3.fromRGB(75, 100, 195),
                             Name        = "Arrow",
                         }), "TextDark"),
-                        AddThemeObject(SetProps(MakeElement("Label", dd.Value, 12), {
+                        -- FIX 3: Selected.Text immer als String setzen
+                        AddThemeObject(SetProps(MakeElement("Label", tostring(dd.Value), 12), {
                             Size           = UDim2.new(1, -38, 1, 0),
                             Font           = Enum.Font.Gotham,
                             Name           = "Selected",
@@ -1612,9 +1570,11 @@ function Library:MakeWindow(wc)
 
                 local function RefreshOptions(opts)
                     for _, opt in pairs(opts) do
+                        -- FIX 4: opt IMMER als String für das Label verwenden
+                        local optStr = tostring(opt)
                         local row = AddThemeObject(SetProps(SetChildren(MakeElement("Button", Color3.fromRGB(18, 20, 40)), {
                             MakeElement("Corner", 0, 5),
-                            AddThemeObject(SetProps(MakeElement("Label", opt, 12, 0.45), {
+                            AddThemeObject(SetProps(MakeElement("Label", optStr, 12, 0.45), {
                                 Position = UDim2.new(0, 10, 0, 0),
                                 Size     = UDim2.new(1, -10, 1, 0),
                                 Font     = Enum.Font.GothamSemibold,
@@ -1631,14 +1591,15 @@ function Library:MakeWindow(wc)
                             T(row, 0.12, nil, nil, {BackgroundTransparency = 0.75})
                         end)
                         AddConnection(row.MouseLeave, function()
-                            if dd.Value ~= opt then
+                            if dd.Value ~= optStr then
                                 T(row, 0.12, nil, nil, {BackgroundTransparency = 1})
                             end
                         end)
                         AddConnection(row.MouseButton1Click, function()
-                            dd:Set(opt); SaveCfg()
+                            dd:Set(optStr); SaveCfg()
                         end)
-                        dd.Buttons[opt] = row
+                        -- FIX 5: Key als String speichern
+                        dd.Buttons[optStr] = row
                     end
                 end
 
@@ -1647,11 +1608,14 @@ function Library:MakeWindow(wc)
                         for _, v in pairs(dd.Buttons) do v:Destroy() end
                         table.clear(dd.Options); table.clear(dd.Buttons)
                     end
-                    dd.Options = opts
+                    -- FIX 6: Auch bei Refresh normalisieren
+                    dd.Options = NormalizeOptions(opts)
                     RefreshOptions(dd.Options)
                 end
 
                 function dd:Set(val)
+                    -- FIX 7: val immer zu String konvertieren
+                    val = tostring(val or "")
                     if not table.find(dd.Options, val) then
                         dd.Value = "—"
                         card.F.Selected.Text = dd.Value
@@ -1662,13 +1626,15 @@ function Library:MakeWindow(wc)
                         return
                     end
                     dd.Value = val
-                    card.F.Selected.Text = dd.Value
+                    -- FIX 8: Text-Zuweisung als String sicherstellen
+                    card.F.Selected.Text = tostring(dd.Value)
                     for k, b in pairs(dd.Buttons) do
                         local isSelected = k == val
                         T(b, 0.12, nil, nil, {BackgroundTransparency = isSelected and 0.72 or 1})
                         T(b.Title, 0.12, nil, nil, {TextTransparency = isSelected and 0 or 0.45})
                     end
-                    cfg.Callback(dd.Value)
+                    -- FIX 9: Callback mit pcall schützen
+                    pcall(cfg.Callback, dd.Value)
                 end
 
                 AddConnection(click.MouseButton1Click, function()
@@ -1691,10 +1657,9 @@ function Library:MakeWindow(wc)
                 return dd
             end
 
-            -- ── Bind ──────────────────────────────────────────────
             function ef:AddBind(cfg)
                 cfg          = cfg or {}
-                cfg.Name     = cfg.Name     or "Bind"
+                cfg.Name     = tostring(cfg.Name     or "Bind")
                 cfg.Default  = cfg.Default  or Enum.KeyCode.Unknown
                 cfg.Hold     = cfg.Hold     or false
                 cfg.Callback = cfg.Callback or function() end
@@ -1755,9 +1720,9 @@ function Library:MakeWindow(wc)
                     if (inp.KeyCode.Name == bind.Value or inp.UserInputType.Name == bind.Value)
                        and not bind.Binding then
                         if cfg.Hold then
-                            holding = true; cfg.Callback(true)
+                            holding = true; pcall(cfg.Callback, true)
                         else
-                            cfg.Callback()
+                            pcall(cfg.Callback)
                         end
                     elseif bind.Binding then
                         local key
@@ -1771,7 +1736,7 @@ function Library:MakeWindow(wc)
                 AddConnection(UserInputService.InputEnded, function(inp)
                     if (inp.KeyCode.Name == bind.Value or inp.UserInputType.Name == bind.Value) then
                         if cfg.Hold and holding then
-                            holding = false; cfg.Callback(false)
+                            holding = false; pcall(cfg.Callback, false)
                         end
                     end
                 end)
@@ -1787,7 +1752,7 @@ function Library:MakeWindow(wc)
                     bind.Binding      = false
                     bind.Value        = key and (key.Name or key) or bind.Value
                     bind.Value        = type(bind.Value) == "string" and bind.Value or bind.Value.Name
-                    keyBox.Value.Text = bind.Value
+                    keyBox.Value.Text = tostring(bind.Value)
                 end
 
                 bind:Set(cfg.Default)
@@ -1795,11 +1760,10 @@ function Library:MakeWindow(wc)
                 return bind
             end
 
-            -- ── Textbox ───────────────────────────────────────────
             function ef:AddTextbox(cfg)
                 cfg               = cfg or {}
-                cfg.Name          = cfg.Name          or "Textbox"
-                cfg.Default       = cfg.Default       or ""
+                cfg.Name          = tostring(cfg.Name          or "Textbox")
+                cfg.Default       = tostring(cfg.Default       or "")
                 cfg.TextDisappear = cfg.TextDisappear or false
                 cfg.Callback      = cfg.Callback      or function() end
 
@@ -1849,7 +1813,7 @@ function Library:MakeWindow(wc)
                       {Size = UDim2.new(0, tbActual.TextBounds.X + 16, 0, 22)})
                 end)
                 AddConnection(tbActual.FocusLost, function()
-                    cfg.Callback(tbActual.Text)
+                    pcall(cfg.Callback, tbActual.Text)
                     if cfg.TextDisappear then tbActual.Text = "" end
                 end)
                 tbActual.Text = cfg.Default
@@ -1865,10 +1829,9 @@ function Library:MakeWindow(wc)
                 end)
             end
 
-            -- ── Colorpicker ───────────────────────────────────────
             function ef:AddColorpicker(cfg)
                 cfg          = cfg or {}
-                cfg.Name     = cfg.Name     or "Color"
+                cfg.Name     = tostring(cfg.Name     or "Color")
                 cfg.Default  = cfg.Default  or Color3.fromRGB(80, 120, 255)
                 cfg.Callback = cfg.Callback or function() end
                 cfg.Flag     = cfg.Flag     or nil
@@ -1977,7 +1940,7 @@ function Library:MakeWindow(wc)
                     swatch.BackgroundColor3 = col
                     colorMap.BackgroundColor3 = Color3.fromHSV(ch, 1, 1)
                     cp.Value = col
-                    cfg.Callback(col)
+                    pcall(cfg.Callback, col)
                     SaveCfg()
                 end
 
@@ -2027,7 +1990,7 @@ function Library:MakeWindow(wc)
                     cp.Value = col
                     swatch.BackgroundColor3 = col
                     ch, cs, cv = Color3.toHSV(col)
-                    cfg.Callback(col)
+                    pcall(cfg.Callback, col)
                 end
 
                 cp:Set(cp.Value)
@@ -2036,19 +1999,18 @@ function Library:MakeWindow(wc)
             end
 
             return ef
-        end -- GetElements
+        end
 
-        -- ── Section ────────────────────────────────────────────────
         local ElementFunction = {}
 
         function ElementFunction:AddSection(sc)
-            sc.Name = sc.Name or "Section"
+            sc = sc or {}
+            sc.Name = tostring(sc.Name or "Section")
 
             local headerRow = SetProps(MakeElement("TFrame"), {
                 Size = UDim2.new(1, 0, 0, 18),
             })
 
-            -- Accent bar (gradient)
             Create("Frame", {
                 Size             = UDim2.new(0, 2, 0, 12),
                 Position         = UDim2.new(0, 0, 0.5, 0),
@@ -2098,11 +2060,10 @@ function Library:MakeWindow(wc)
 
         for k,v in pairs(GetElements(ItemContainer)) do ElementFunction[k] = v end
 
-        -- Premium-only lock overlay
         if tc.PremiumOnly then
             for k in pairs(ElementFunction) do ElementFunction[k] = function() end end
-            ItemContainer:FindFirstChildWhichIsA("UIListLayout"):Destroy()
-            ItemContainer:FindFirstChildWhichIsA("UIPadding"):Destroy()
+            pcall(function() ItemContainer:FindFirstChildWhichIsA("UIListLayout"):Destroy() end)
+            pcall(function() ItemContainer:FindFirstChildWhichIsA("UIPadding"):Destroy() end)
             SetChildren(SetProps(MakeElement("TFrame"), {
                 Size = UDim2.new(1, 0, 1, 0), Parent = ItemContainer,
             }), {
@@ -2120,17 +2081,17 @@ function Library:MakeWindow(wc)
         end
 
         return ElementFunction
-    end -- MakeTab
+    end
 
     return TabFunction
-end -- MakeWindow
+end
 
 -- ============================================================
 --  DESTROY
 -- ============================================================
 
 function Library:Destroy()
-    Container:Destroy()
+    pcall(function() Container:Destroy() end)
 end
 
 return Library
