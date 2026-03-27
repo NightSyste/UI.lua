@@ -604,20 +604,159 @@ function Library:MakeWindow(wc)
 
     -- ── Topbar ────────────────────────────────────────────────
     local WindowName = AddThemeObject(SetProps(MakeElement("Label", wc.Name, 18), {
-        Size      = UDim2.new(1, -130, 1, 0),
-        Position  = UDim2.new(0, 22, 0, 0),
-        Font      = Enum.Font.GothamBlack,
-        TextColor3= Color3.fromRGB(240, 243, 255),
+        Size       = UDim2.new(1, -130, 1, 0),
+        Position   = UDim2.new(0, 22, 0, 0),
+        Font       = Enum.Font.GothamBlack,
+        TextColor3 = Color3.fromRGB(240, 243, 255),
     }), "Text")
 
     -- Hairline separator under topbar
     local TopLine = Create("Frame", {
-        Size             = UDim2.new(1, 0, 0, 1),
-        Position         = UDim2.new(0, 0, 1, -1),
-        BackgroundColor3 = Color3.fromRGB(50, 65, 155),
+        Size                   = UDim2.new(1, 0, 0, 1),
+        Position               = UDim2.new(0, 0, 1, -1),
+        BackgroundColor3       = Color3.fromRGB(50, 65, 155),
         BackgroundTransparency = 0.55,
-        BorderSizePixel  = 0,
+        BorderSizePixel        = 0,
     })
+
+    -- ── Search bar (slides in from right) ────────────────────
+    local SearchOpen = false
+
+    -- Lupe-Button (links neben BtnContainer)
+    local SearchBtn = SetChildren(SetProps(MakeElement("Button"), {
+        Size                   = UDim2.new(0, 28, 0, 28),
+        Position               = UDim2.new(1, -152, 0.5, 0),
+        AnchorPoint            = Vector2.new(0, 0.5),
+        BackgroundColor3       = Color3.fromRGB(10, 12, 26),
+        BackgroundTransparency = 0.55,
+    }), {
+        Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
+        Create("UIStroke",  {Color = Color3.fromRGB(48, 62, 145), Thickness = 1, Transparency = 0.4}),
+        -- Lupe-Icon via Text (Unicode)
+        Create("TextLabel", {
+            Size                   = UDim2.new(1, 0, 1, 0),
+            BackgroundTransparency = 1,
+            Text                   = "⌕",
+            TextColor3             = Color3.fromRGB(130, 155, 240),
+            TextSize               = 18,
+            Font                   = Enum.Font.GothamBold,
+            TextXAlignment         = Enum.TextXAlignment.Center,
+            Name                   = "Icon",
+        }),
+    })
+
+    -- Such-Overlay (versteckt, gleitet über den Topbar)
+    local SearchBar = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(8, 10, 22), 0, 7), {
+        Size                   = UDim2.new(0, 0, 0, 28),   -- startet bei Breite 0
+        Position               = UDim2.new(1, -16, 0.5, 0),
+        AnchorPoint            = Vector2.new(1, 0.5),
+        BackgroundTransparency = 0.35,
+        ClipsDescendants       = true,
+        ZIndex                 = 10,
+    }), {
+        Create("UIStroke", {
+            Color        = Color3.fromRGB(70, 95, 210),
+            Thickness    = 1,
+            Transparency = 0.25,
+            Name         = "Border",
+        }),
+        -- Lupe links im Suchfeld
+        Create("TextLabel", {
+            Size                   = UDim2.new(0, 22, 1, 0),
+            Position               = UDim2.new(0, 4, 0, 0),
+            BackgroundTransparency = 1,
+            Text                   = "⌕",
+            TextColor3             = Color3.fromRGB(90, 120, 220),
+            TextSize               = 16,
+            Font                   = Enum.Font.GothamBold,
+            TextXAlignment         = Enum.TextXAlignment.Center,
+        }),
+        -- Eigentliches Texteingabe-Feld
+        Create("TextBox", {
+            Size                   = UDim2.new(1, -52, 1, 0),
+            Position               = UDim2.new(0, 26, 0, 0),
+            BackgroundTransparency = 1,
+            TextColor3             = Color3.fromRGB(220, 228, 255),
+            PlaceholderColor3      = Color3.fromRGB(70, 90, 165),
+            PlaceholderText        = "Suchen…",
+            Font                   = Enum.Font.GothamSemibold,
+            TextSize               = 13,
+            ClearTextOnFocus       = false,
+            TextXAlignment         = Enum.TextXAlignment.Left,
+            Name                   = "Input",
+            ZIndex                 = 11,
+        }),
+        -- X-Button zum Schließen
+        Create("TextButton", {
+            Size                   = UDim2.new(0, 20, 1, 0),
+            Position               = UDim2.new(1, -22, 0, 0),
+            BackgroundTransparency = 1,
+            Text                   = "✕",
+            TextColor3             = Color3.fromRGB(80, 100, 185),
+            TextSize               = 11,
+            Font                   = Enum.Font.GothamBold,
+            Name                   = "CloseSearch",
+            ZIndex                 = 12,
+        }),
+    })
+
+    -- Suche öffnen / schließen
+    local function SetSearch(open)
+        SearchOpen = open
+        if open then
+            T(SearchBar,  0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out,
+              {Size = UDim2.new(0, 220, 0, 28)})
+            T(SearchBtn,  0.20, nil, nil, {BackgroundTransparency = 0.25})
+            T(SearchBtn.Icon, 0.15, nil, nil, {TextColor3 = Color3.fromRGB(160, 185, 255)})
+            task.wait(0.15)
+            SearchBar.Input:CaptureFocus()
+        else
+            SearchBar.Input:ReleaseFocus()
+            SearchBar.Input.Text = ""
+            T(SearchBar, 0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.In,
+              {Size = UDim2.new(0, 0, 0, 28)})
+            T(SearchBtn, 0.20, nil, nil, {BackgroundTransparency = 0.55})
+            T(SearchBtn.Icon, 0.15, nil, nil, {TextColor3 = Color3.fromRGB(130, 155, 240)})
+            -- Alle Elemente wieder einblenden
+            for _, ic in ipairs(MainWindow:GetChildren()) do
+                if ic.Name == "ItemContainer" and ic.Visible then
+                    for _, el in ipairs(ic:GetChildren()) do
+                        if el:IsA("Frame") or el:IsA("ScrollingFrame") then
+                            el.Visible = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    AddConnection(SearchBtn.MouseButton1Click, function()
+        SetSearch(not SearchOpen)
+    end)
+    AddConnection(SearchBar.CloseSearch.MouseButton1Click, function()
+        SetSearch(false)
+    end)
+
+    -- Live-Filter: blendet Elemente aus die nicht zum Suchbegriff passen
+    AddConnection(SearchBar.Input:GetPropertyChangedSignal("Text"), function()
+        local query = SearchBar.Input.Text:lower()
+        for _, ic in ipairs(MainWindow:GetChildren()) do
+            if ic.Name == "ItemContainer" and ic.Visible then
+                for _, el in ipairs(ic:GetChildren()) do
+                    if el:IsA("Frame") or el:IsA("ScrollingFrame") then
+                        -- Elementname aus dem Label "Content" lesen
+                        local nameLabel = el:FindFirstChild("Content")
+                        local elName = nameLabel and nameLabel.Text:lower() or ""
+                        if query == "" then
+                            el.Visible = true
+                        else
+                            el.Visible = elName:find(query, 1, true) ~= nil
+                        end
+                    end
+                end
+            end
+        end
+    end)
 
     local DragPoint = SetProps(MakeElement("TFrame"), {Size = UDim2.new(1, 0, 0, 48)})
 
@@ -626,7 +765,7 @@ function Library:MakeWindow(wc)
         Name             = "TopBar",
         ClipsDescendants = false,
     }), {
-        WindowName, TopLine, BtnContainer, DragPoint,
+        WindowName, TopLine, SearchBtn, SearchBar, BtnContainer, DragPoint,
     })
 
     -- ── Sidebar ───────────────────────────────────────────────
