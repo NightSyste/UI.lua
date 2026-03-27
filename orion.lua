@@ -946,38 +946,92 @@ function Library:MakeWindow(wc)
     local function RunIntro()
         MainWindow.Visible = false
 
-        local logo = SetProps(MakeElement("Image", wc.IntroIcon), {
-            Parent            = Container,
-            AnchorPoint       = Vector2.new(0.5, 0.5),
-            Position          = UDim2.new(0.5, 0, 0.38, 0),
-            Size              = UDim2.new(0, 30, 0, 30),
-            ImageColor3       = Color3.fromRGB(140, 168, 255),
-            ImageTransparency = 1,
+        -- ── Stylisierter "N"-Monogramm-Badge ─────────────────────
+        -- Äußerer Glow-Ring
+        local glowRing = Create("Frame", {
+            Parent                 = Container,
+            AnchorPoint            = Vector2.new(0.5, 0.5),
+            Position               = UDim2.new(0.5, 0, 0.38, 0),
+            Size                   = UDim2.new(0, 58, 0, 58),
+            BackgroundColor3       = Color3.fromRGB(70, 100, 240),
+            BackgroundTransparency = 1,    -- startet unsichtbar
+            BorderSizePixel        = 0,
+        }, {
+            Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
+            Create("UIGradient", {
+                Color    = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 155, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(90,  50, 230)),
+                }),
+                Rotation = 135,
+            }),
         })
-        local lbl = SetProps(MakeElement("Label", wc.IntroText, 15), {
+
+        -- Innerer dunkler Badge
+        local badge = Create("Frame", {
+            Parent                 = Container,
+            AnchorPoint            = Vector2.new(0.5, 0.5),
+            Position               = UDim2.new(0.5, 0, 0.38, 0),
+            Size                   = UDim2.new(0, 46, 0, 46),
+            BackgroundColor3       = Color3.fromRGB(8, 9, 20),
+            BackgroundTransparency = 1,
+            BorderSizePixel        = 0,
+        }, {
+            Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
+            -- "N" Buchstabe
+            Create("TextLabel", {
+                Size                   = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text                   = "N",
+                TextColor3             = Color3.fromRGB(200, 218, 255),
+                TextSize               = 26,
+                Font                   = Enum.Font.GothamBlack,
+                TextXAlignment         = Enum.TextXAlignment.Center,
+                TextYAlignment         = Enum.TextYAlignment.Center,
+                Name                   = "Letter",
+            }),
+        })
+
+        local lbl = SetProps(MakeElement("Label", wc.IntroText, 14), {
             Parent           = Container,
             Size             = UDim2.new(1, 0, 1, 0),
             AnchorPoint      = Vector2.new(0.5, 0.5),
-            Position         = UDim2.new(0.5, 18, 0.5, 0),
+            Position         = UDim2.new(0.5, 30, 0.5, 0),
             TextXAlignment   = Enum.TextXAlignment.Center,
             Font             = Enum.Font.GothamBold,
             TextColor3       = Color3.fromRGB(200, 215, 255),
             TextTransparency = 1,
         })
 
-        T(logo, 0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out,
-          {ImageTransparency = 0, Position = UDim2.new(0.5, 0, 0.5, 0)})
-        task.wait(0.75)
-        T(logo, 0.3,  Enum.EasingStyle.Quad, Enum.EasingDirection.Out,
-          {Position = UDim2.new(0.5, -(lbl.TextBounds.X / 2), 0.5, 0)})
-        task.wait(0.28)
-        T(lbl,  0.3,  Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {TextTransparency = 0})
-        task.wait(1.8)
-        T(lbl,  0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In,  {TextTransparency = 1})
-        T(logo, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In,  {ImageTransparency = 1})
-        task.wait(0.35)
+        -- Einblenden: Ring + Badge tauchen auf, Badge steigt von oben ein
+        T(glowRing, 0.40, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, {
+            BackgroundTransparency = 0.20,
+            Position               = UDim2.new(0.5, 0, 0.5, 0),
+        })
+        T(badge, 0.40, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, {
+            BackgroundTransparency = 0,
+            Position               = UDim2.new(0.5, 0, 0.5, 0),
+        })
+        task.wait(0.85)
+
+        -- Badge + Ring nach links schieben, Text einblenden
+        local textW = lbl.TextBounds.X
+        T(glowRing, 0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out,
+          {Position = UDim2.new(0.5, -(textW / 2) - 2, 0.5, 0)})
+        T(badge,    0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out,
+          {Position = UDim2.new(0.5, -(textW / 2) - 2, 0.5, 0)})
+        task.wait(0.25)
+        T(lbl, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, {TextTransparency = 0})
+
+        task.wait(1.9)
+
+        -- Ausblenden
+        T(lbl,      0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In, {TextTransparency = 1})
+        T(badge,    0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.In, {BackgroundTransparency = 1})
+        T(glowRing, 0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.In, {BackgroundTransparency = 1})
+        task.wait(0.38)
         MainWindow.Visible = true
-        logo:Destroy(); lbl:Destroy()
+        glowRing:Destroy(); badge:Destroy(); lbl:Destroy()
     end
 
     if wc.IntroEnabled then RunIntro() end
