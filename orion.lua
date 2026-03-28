@@ -5,7 +5,6 @@ local Players           = game:GetService("Players")
 local LocalPlayer       = Players.LocalPlayer
 local Mouse             = LocalPlayer:GetMouse()
 
--- ── Tween helpers ──────────────────────────────────────────
 local function T(obj, dur, style, dir, props)
     style = style or Enum.EasingStyle.Quint
     dir   = dir   or Enum.EasingDirection.Out
