@@ -1,8 +1,3 @@
--- ============================================================
---  Froxy UI Library  ·  Glassmorphism v2  ·  Professional
---  FIXED VERSION — alle Bugs behoben
--- ============================================================
-
 local UserInputService  = game:GetService("UserInputService")
 local TweenService      = game:GetService("TweenService")
 local RunService        = game:GetService("RunService")
@@ -17,9 +12,6 @@ local function T(obj, dur, style, dir, props)
     TweenService:Create(obj, TweenInfo.new(dur, style, dir), props):Play()
 end
 
--- ============================================================
---  THEME
--- ============================================================
 local Library = {
     Elements     = {},
     ThemeObjects = {},
@@ -54,10 +46,6 @@ local Library = {
     Font    = Enum.Font.Gotham,
 }
 
--- ============================================================
---  INTERNALS
--- ============================================================
-
 function Library:CleanupInstance()
     for _, inst in ipairs(game:GetService("CoreGui"):GetChildren()) do
         if inst:IsA("ScreenGui") and inst.Name:match("^[A-Z]%d%d%d$") then
@@ -89,7 +77,6 @@ task.spawn(function()
     for _, c in ipairs(Library.Connections) do c:Disconnect() end
 end)
 
--- ── Draggable ──────────────────────────────────────────────
 local function MakeDraggable(DragPoint, Main)
     local resizing = false
     pcall(function()
@@ -121,7 +108,6 @@ local function MakeDraggable(DragPoint, Main)
     return function(r) resizing = r end
 end
 
--- ── Resizable ──────────────────────────────────────────────
 local function MakeResizable(ResizeBtn, Main, MinSz, MaxSz, Cb)
     pcall(function()
         local active, startSz, startPos = false
@@ -150,7 +136,6 @@ local function MakeResizable(ResizeBtn, Main, MinSz, MaxSz, Cb)
     end)
 end
 
--- ── Factories ──────────────────────────────────────────────
 local function Create(name, props, children)
     local obj = Instance.new(name)
     for k,v in pairs(props or {}) do obj[k] = v end
@@ -231,10 +216,6 @@ local BlacklistedKeys  = {
 local function CheckKey(tbl, key)
     for _,v in ipairs(tbl) do if v == key then return true end end
 end
-
--- ============================================================
---  ELEMENT PRIMITIVES
--- ============================================================
 
 CreateElement("Corner", function(scale, offset)
     return Create("UICorner", {CornerRadius = UDim.new(scale or 0, offset or 8)})
@@ -322,7 +303,6 @@ CreateElement("Label", function(text, size, transp)
     })
 end)
 
--- ── Glass card helper ──────────────────────────────────────
 local function GlassCard(size, parent, alpha)
     alpha = alpha or 0.55
     local f = Create("Frame", {
@@ -341,10 +321,6 @@ local function GlassCard(size, parent, alpha)
     })
     return f
 end
-
--- ============================================================
---  NOTIFICATIONS
--- ============================================================
 
 local NotifHolder = SetProps(SetChildren(MakeElement("TFrame"), {
     SetProps(MakeElement("List"), {
@@ -460,10 +436,6 @@ function Library:Init()
         end)
     end
 end
-
--- ============================================================
---  WINDOW
--- ============================================================
 
 function Library:MakeWindow(wc)
     local FirstTab  = true
@@ -674,8 +646,6 @@ function Library:MakeWindow(wc)
             ZIndex                 = 12,
         }),
     })
-
-    -- FIX: MainWindow wird VOR den Connections deklariert damit der Scope stimmt
     local MainWindow
 
     local function SetSearch(open)
@@ -998,10 +968,6 @@ function Library:MakeWindow(wc)
 
     if wc.IntroEnabled then RunIntro() end
 
-    -- ============================================================
-    --  TABS
-    -- ============================================================
-
     local TabFunction = {}
 
     function TabFunction:MakeTab(tc)
@@ -1111,10 +1077,6 @@ function Library:MakeWindow(wc)
             pcall(function() snd:Play() end)
             activateTab()
         end)
-
-        -- ============================================================
-        --  ELEMENTS
-        -- ============================================================
 
         local function GetElements(itemParent)
             local ef = {}
@@ -1458,7 +1420,7 @@ function Library:MakeWindow(wc)
                 end)
 
                 function sl:Set(v)
-                    -- FIX: tonumber damit keine Strings den math.clamp crashen
+                    
                     v = tonumber(v) or cfg.Min
                     self.Value = math.clamp(Round(v, cfg.Increment), cfg.Min, cfg.Max)
                     local pct  = (self.Value - cfg.Min) / (cfg.Max - cfg.Min)
@@ -1475,7 +1437,6 @@ function Library:MakeWindow(wc)
                 return sl
             end
 
-            -- ── Dropdown — HAUPTFIX ────────────────────────────────
             function ef:AddDropdown(cfg)
                 cfg          = cfg or {}
                 cfg.Name     = tostring(cfg.Name     or "Dropdown")
@@ -1485,7 +1446,6 @@ function Library:MakeWindow(wc)
                 cfg.Flag     = cfg.Flag     or nil
                 cfg.Save     = cfg.Save     or false
 
-                -- FIX 1: Alle Options direkt beim Start zu Strings konvertieren
                 local function NormalizeOptions(opts)
                     local result = {}
                     for _, v in ipairs(opts) do
@@ -1503,7 +1463,6 @@ function Library:MakeWindow(wc)
                     Save    = cfg.Save,
                 }
 
-                -- FIX 2: Default-Wert prüfen nach Normalisierung
                 if not table.find(dd.Options, dd.Value) then dd.Value = "—" end
 
                 local MAX = 5
@@ -2085,10 +2044,6 @@ function Library:MakeWindow(wc)
 
     return TabFunction
 end
-
--- ============================================================
---  DESTROY
--- ============================================================
 
 function Library:Destroy()
     pcall(function() Container:Destroy() end)
